@@ -26,7 +26,7 @@ defmodule NetworkNode do
     def change_routing_table(routing_table,node_list,node_hash,row_num) do
         nth_row_list = Enum.filter(node_list,fn(nodes) -> String.slice(nodes,0,row_num-1)==String.slice(node_hash,0,row_num-1) end)
         #IO.inspect row_num
-        IO.inspect nth_row_list
+        #IO.inspect nth_row_list
         row_map = %{"0" => "","1" => "","2" => "","3" => "","4" => "","5" => "","6" => "","7" => "","8" => "","9" => "","A" => "","B" => "","C" => "","D" => "","E" => "","F" => ""}
         nth_row_map = get_row_map(row_map,nth_row_list,node_hash,row_num,15)
         #IO.inspect nth_row_map
@@ -46,7 +46,8 @@ defmodule NetworkNode do
         int_hashvalue = List.to_integer(node_hash |> to_char_list(),16)
          if(value != []) do
           {hash_value,_diff} = Enum.min_by(Enum.map(value, fn x -> {x, abs(List.to_integer(x |> to_charlist(),16) - int_hashvalue) } end), fn({x,y}) -> y end)
-          IO.inspect hash_value, label: "if part cleared"
+          IO.inspect value, label: "from value"
+          IO.inspect hash_value
           row_map = put_in(row_map[String.at(hex_value,col_num)],hash_value)
           get_row_map(row_map,nth_row_list,node_hash,row_num,col_num-1)
         else

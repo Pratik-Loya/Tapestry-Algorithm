@@ -17,7 +17,7 @@ defmodule CreateNode do
             [hash_value | bucket]
         end)
         
-        node_list = ["1001","5CFE","1222","FEBC","1235","1211","1167","1F98","11BC","1BDF"]
+        node_list = ["1001","5CFE","1222","FEBC","1235","1211","1167","1F98","11BC","1BDF","11CC"]
         node_hash = "1234"
         NetworkNode.start(node_list,node_hash)
 
