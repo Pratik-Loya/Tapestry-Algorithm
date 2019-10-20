@@ -16,11 +16,11 @@ defmodule CreateNode do
             hash_value = get_hash_value(number,num_nodes,bucket)
             [hash_value | bucket]
         end)
-        
         node_list = ["1001","5CFE","1222","FEBC","1235","1211","1167","1F98","11BC","1BDF","11CC"]
         node_hash = "1234"
         NetworkNode.start(node_list,node_hash)
-
+        node_hash = "2ABC"
+        NetworkNode.start(node_list,node_hash)
         #NetworkNode.start(node_list,Enum.at(node_list,0))
         '''
         Enum.each(node_list, fn node_hash->
@@ -29,10 +29,21 @@ defmodule CreateNode do
             #IO.inspect getPid(node_hash)
         end)
         '''
-
-        {:reply, state,state}
+        GenServer.call(getPid("1234"),{:print_routing_table})
+        {:reply, :ok,node_list}
     end
 
+    def handle_call({:add_nodes_to_network, num_nodes,start_from}, _from, node_list) do
+        Enum.each(1..num_nodes, fn(node) -> 
+            IO.inspect start_from+node
+        end)
+        {:reply, :ok,node_list}
+    end
+
+    def handle_call({:print_state, num_nodes}, _from, state) do
+        IO.inspect state
+        {:reply, state,state}
+    end
 
     def getPid(node_id) do
         case Registry.lookup(:registry, node_id) do
