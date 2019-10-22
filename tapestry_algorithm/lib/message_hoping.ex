@@ -13,7 +13,7 @@ defmodule MessageHoping do
         #GenServer.cast(CreateNode.getPid(node), {:start_searching,node_list--[node],node, num_requests})
         
         Enum.each(node_list, fn(node) -> 
-            IO.inspect node
+            #IO.inspect node
             GenServer.cast(CreateNode.getPid(node), {:start_searching,node_list--[node],node, num_requests})
         end)
         receive_wrapper(length(node_list),0)
@@ -25,7 +25,7 @@ defmodule MessageHoping do
     def receive_wrapper(num_nodes,max) do
         receive do
             {:max, count} ->
-                IO.inspect count, label: "got it"
+                #IO.inspect count, label: "got it"
                 if(count>max) do
                     receive_wrapper(num_nodes-1,count)
                 else
