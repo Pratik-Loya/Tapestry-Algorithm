@@ -14,7 +14,7 @@ defmodule MainModule do
         
         node_list = GenServer.call(create_node_pid,{:get_node_list})
         {:ok, message_hop_pid} = MessageHoping.start()
-        GenServer.call(message_hop_pid,{start_connections, node_list, num_nodes}, :infinite)
+        GenServer.call(message_hop_pid,{:start_connections, node_list, num_requests},100000)
         #GenServer.call(create_node_pid,{:print_state},1000)
         
     end

@@ -1,7 +1,7 @@
 defmodule CreateNode do
 
     @crypto_function :sha
-    @no_of_bits 4
+    @no_of_bits 8
 
     def start_link() do
         GenServer.start_link(__MODULE__, [], name: :create_node)
@@ -16,28 +16,27 @@ defmodule CreateNode do
             hash_value = get_hash_value(number,num_nodes,bucket)
             [hash_value | bucket]
         end)
-        node_list = ["1001","5CFE","1222","FEBC","1235","1211","1167","1F98","11BC","1BDF","11CC","1234"]
+        #node_list = ["1001","5CFE","1222","FEBC","1235","1211","1167","1F98","11BC","1BDF","11CC","1234"]
     
         Enum.each(node_list, fn node_hash->
             NetworkNode.start(node_hash)
             GenServer.call(getPid(node_hash),{:generate_routing_table,node_list,node_hash})
-            #IO.inspect node_hash
-            #IO.inspect getPid(node_hash)
         end)
        
+        #GenServer.call(getPid("1F98"),{:print_routing_table})
         #GenServer.call(getPid("1234"),{:print_routing_table})
         {:reply, :ok,node_list}
     end
 
     def handle_call({:add_node_to_network,num_nodes, node_number}, _from, node_list) do
-        node_hash = "1233"
-        #node_hash = get_hash_value(node_number,num_nodes,node_list)
+        #node_hash = "1233"
+        node_hash = get_hash_value(node_number,num_nodes,node_list)
         NetworkNode.start(node_hash)
         node_list = node_list ++ [node_hash]
         GenServer.call(getPid(node_hash),{:generate_routing_table,node_list,node_hash})
         GenServer.cast(getPid(node_hash),{:multicast_presence,node_list,node_hash})
         Process.sleep(2000)
-        GenServer.call(getPid(node_hash),{:print_routing_table})
+        #GenServer.call(getPid("1F98"),{:print_routing_table})
         {:reply, :ok,node_list}
     end
 
