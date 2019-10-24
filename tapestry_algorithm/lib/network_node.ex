@@ -1,5 +1,7 @@
 defmodule NetworkNode do
     @no_of_bits 8
+    @empty_row %{"0" => [],"1" => [], "2" => [], "3" => [], "4" => [], "5" => [], "6" => [], "7" => [],"8" => [],"9" => [],"A" => [], "B" => [],"C" => [],"D" => [],"E" => [],"F" => []}
+    @hex_value "0123456789ABCDEF"
 
     def start(node_hash) do
         GenServer.start_link(__MODULE__,[], name: {:via, Registry, {:registry, node_hash}})
@@ -30,33 +32,93 @@ defmodule NetworkNode do
     def get_row_map(row_map,nth_row_list,node_hash,row_num,-1), do: row_map
 
     def get_row_map(row_map,nth_row_list,node_hash,row_num,col_num) do
-        hex_value = "0123456789ABCDEF"
         #finding list of values eligible for 1 column
-        value = Enum.filter(nth_row_list, fn(x) ->  String.at(x,row_num-1) == String.at(hex_value,col_num) end)
+        value = Enum.filter(nth_row_list, fn(x) ->  String.at(x,row_num-1) == String.at(@hex_value,col_num) end)
 
         #find the node that is nearest
         int_hashvalue = List.to_integer(node_hash |> Kernel.to_charlist(),16)
          if(value != []) do
           {hash_value,_diff} = Enum.min_by(Enum.map(value, fn x -> {x, abs(List.to_integer(x |> to_charlist(),16) - int_hashvalue) } end), fn({x,y}) -> y end)
-          row_map = put_in(row_map[String.at(hex_value,col_num)],hash_value)
+          row_map = put_in(row_map[String.at(@hex_value,col_num)],hash_value)
           get_row_map(row_map,nth_row_list,node_hash,row_num,col_num-1)
         else
-          row_map = put_in(row_map[String.at(hex_value,col_num)],value)
+          row_map = put_in(row_map[String.at(@hex_value,col_num)],value)
           get_row_map(row_map,nth_row_list,node_hash,row_num,col_num-1)
         end
     end
 
-    def handle_cast({:multicast_presence,node_list,node_hash},state) do
-        temp_list = node_list -- [node_hash]
-        Enum.each(temp_list,fn(node) -> 
+    def handle_call({:update_network,node_list,node_hash},_from,state) do
+        nearest_node = find_nearest_node_list(node_hash,node_list,@no_of_bits)
+        #IO.puts "#{node_hash} - nearest node #{nearest_node}"
+        nearest_node_routing_table = GenServer.call(getPid(nearest_node),{:get_routing_table})
+        #IO.inspect nearest_node_routing_table, label: "nearest_node_routing_table"
+        index = Enum.find(1..@no_of_bits, fn x -> (String.at(node_hash,x - 1) != String.at(nearest_node,x-1)) end)
+        #IO.inspect index, label: "unmatched index"
+        self_routing_table = copy_routing_table(%{},nearest_node_routing_table,index,node_hash,@no_of_bits)
+        self_routing_table = put_in(self_routing_table[index][String.at(nearest_node,index-1)], nearest_node)
+        self_routing_table = put_in(self_routing_table[@no_of_bits][String.at(node_hash,@no_of_bits-1)], node_hash)
+        #IO.inspect self_routing_table, label: node_hash
+        GenServer.cast(getPid(nearest_node),{:multicast_presence,node_hash,index})
+        #Process.sleep(3000)
+        '''
+        Enum.each(node_list,fn(node) -> 
             GenServer.cast(getPid(node),{:update_routing_table,node_hash,node})
         end)
-
-        {:noreply,state}
+        '''
+        {:reply,:ok,{self_routing_table,[]}}
     end
 
-    def handle_cast({:update_routing_table,new_node,node},{routing_table,count_list}) do
-        
+    def copy_routing_table(self_routing_table,nearest_node_routing_table,index,node_hash,0), do: self_routing_table
+
+    def copy_routing_table(self_routing_table,nearest_node_routing_table,index,node_hash,map_length) do
+        if(map_length>index) do
+            self_routing_table = put_in(self_routing_table[map_length], @empty_row)
+            copy_routing_table(self_routing_table,nearest_node_routing_table,index,node_hash,map_length-1)
+        else
+            self_routing_table = put_in(self_routing_table[map_length], nearest_node_routing_table[map_length])
+            copy_routing_table(self_routing_table,nearest_node_routing_table,index,node_hash,map_length-1)
+        end
+    end
+
+    def find_nearest_node_list(node_hash, node_list,length) do
+        nearest_node_list = Enum.filter(node_list,fn(nodes) -> String.slice(nodes,0,length-1)==String.slice(node_hash,0,length-1) end)
+        if(nearest_node_list != [] && nearest_node_list != nil) do
+            find_nearest_node(nearest_node_list,node_hash)
+        else
+            find_nearest_node_list(node_hash, node_list,length-1)
+        end
+    end
+
+    def find_nearest_node(nearest_node_list,node_hash) do
+        nearest_node = Enum.min_by(nearest_node_list, fn(node)-> 
+            abs(List.to_integer(node |> Kernel.to_charlist(),16) - List.to_integer(node_hash |> Kernel.to_charlist(),16))
+        end)
+        nearest_node
+    end
+
+    def handle_call({:get_routing_table},_from, {routing_table,count_list}) do
+        {:reply, routing_table,{routing_table,count_list}}
+    end
+
+    def handle_cast({:multicast_presence, new_node,row_num},{routing_table, count_list}) do
+        update_routing_table(new_node,routing_table)
+        [self_node_id] = Registry.keys(:registry, self())
+        if(row_num<=@no_of_bits+1) do
+            Enum.each(row_num..@no_of_bits, fn(row)->
+                Enum.each(0..15, fn(col) ->
+                    node = routing_table[row][String.at(@hex_value,col)]
+                     if(node != [] && node != self_node_id && node != nil) do
+                        #IO.puts "#{self_node_id} : #{routing_table[row][String.at(@hex_value,col)]}- #{row_num}"
+                        GenServer.cast(getPid(node),{:multicast_presence,new_node,row_num+1})
+                     end
+                 end) 
+             end) 
+        end
+        {:noreply,{routing_table, count_list} }
+    end
+
+    def update_routing_table(new_node,routing_table) do
+        [node] = Registry.keys(:registry,self())
         index = Enum.find(1..@no_of_bits, fn x -> (String.at(node,x - 1) != String.at(new_node,x-1)) end)
         temp  = routing_table[index][String.at(new_node, index-1)]
         if(temp != [] && temp != nil) do
@@ -69,7 +131,6 @@ defmodule NetworkNode do
         else
             GenServer.cast(self(),{:nearest,index,new_node})
         end
-        {:noreply,{routing_table,count_list}}
     end
 
     def handle_cast({:nearest,index,new_node},{routing_table,count_list}) do
@@ -118,7 +179,7 @@ defmodule NetworkNode do
     end
 
     def handle_call({:print_routing_table},_from,state)do
-        IO.inspect state
+        IO.inspect state, label: Registry.keys(:registry,self())
         {:reply,state,state}
     end
 end

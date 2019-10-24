@@ -9,9 +9,6 @@ defmodule MessageHoping do
 
 
     def handle_call({:start_connections, node_list, num_requests},_from,state) do
-        #node = "1222"
-        #GenServer.cast(CreateNode.getPid(node), {:start_searching,node_list--[node],node, num_requests})
-        
         Enum.each(node_list, fn(node) -> 
             #IO.inspect node
             GenServer.cast(CreateNode.getPid(node), {:start_searching,node_list--[node],node, num_requests})
@@ -20,7 +17,7 @@ defmodule MessageHoping do
         {:reply, :ok, state}
     end
 
-    def receive_wrapper(0,max), do: IO.inspect max, label: "Max of network"
+    def receive_wrapper(0,max), do: IO.inspect max, label: "Maximum hop in the network"
         
     def receive_wrapper(num_nodes,max) do
         receive do
