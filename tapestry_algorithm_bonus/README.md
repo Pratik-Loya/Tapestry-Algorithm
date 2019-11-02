@@ -8,7 +8,7 @@ Kirti Desai
 -	When true: - Program will execute with creation of routing tables of nodes and dynamic addition of nodes into the tapestry. Post creation of the network, one random process is killed. Even if one node is removed from the network, program is able to route to the destination node and calculate the maximum hop count without failure.
 
 ## Run Command:
--	Go to directory Desai_Loya/project3_bonus/
+-	Go to directory tapestry_algorithm_bonus/
 - Run Command to count maximum hops with introducing a failure node: (number of argument - 3)
 “mix run project3.exs num_nodes num_request true”
 -	Run Command to count maximum hops without any failure node: (number of argument - 3)
